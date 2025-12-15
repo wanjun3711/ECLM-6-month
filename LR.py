@@ -16,6 +16,9 @@ feature_columns = [
 X = train_data[feature_columns]
 y = train_data['Vital status']
 
+# 确保 y 是整数类型（可选，但推荐）
+y = y.astype(int)
+
 # 创建逻辑回归模型（使用指定的最佳参数）
 lr_params = {
     'C': 0.001,
@@ -27,7 +30,19 @@ lr_params = {
 
 lr_model = LogisticRegression(**lr_params)
 
-# 特征映射字典
+# ✅ 关键修改：训练数据已经是数值编码，无需再次 map！
+X_encoded = X.copy()
+
+# 可选：添加安全检查（推荐）
+if X_encoded.isnull().any().any():
+    raise ValueError("Training features contain NaN values.")
+if y.isnull().any():
+    raise ValueError("Target variable contains NaN values.")
+
+# 训练模型
+lr_model.fit(X_encoded, y)
+
+# 特征映射字典（仅用于预测时将用户输入转为模型所需的数值）
 class_mapping = {0: "Alive", 1: "Dead"}
 
 age_mapper = {'57-78': 1, '>78': 2, '<57': 3}
@@ -55,28 +70,7 @@ bone_metastasis_mapper = {"NO": 2, "Yes": 1}
 brain_metastasis_mapper = {"NO": 2, "Yes": 1}
 lung_metastasis_mapper = {"NO": 2, "Yes": 1}
 
-# 对训练集 X 进行编码
-X_encoded = X.copy()
-X_encoded['Age'] = X_encoded['Age'].map(age_mapper)
-X_encoded['Race'] = X_encoded['Race'].map(race_mapper)
-X_encoded['Sex'] = X_encoded['Sex'].map(sex_mapper)
-X_encoded['Primary Site'] = X_encoded['Primary Site'].map(primary_site_mapper)
-X_encoded['Histologic Type'] = X_encoded['Histologic Type'].map(histologic_type_mapper)
-X_encoded['Grade'] = X_encoded['Grade'].map(grade_mapper)  
-X_encoded['T stage'] = X_encoded['T stage'].map(t_stage_mapper)
-X_encoded['N stage'] = X_encoded['N stage'].map(n_stage_mapper)
-X_encoded['Surgery'] = X_encoded['Surgery'].map(surgery_mapper)
-X_encoded['Radiation'] = X_encoded['Radiation'].map(radiation_mapper)
-X_encoded['Chemotherapy'] = X_encoded['Chemotherapy'].map(chemotherapy_mapper)
-X_encoded['Bone metastasis'] = X_encoded['Bone metastasis'].map(bone_metastasis_mapper)
-X_encoded['Brain metastasis'] = X_encoded['Brain metastasis'].map(brain_metastasis_mapper)
-X_encoded['Lung metastasis'] = X_encoded['Lung metastasis'].map(lung_metastasis_mapper)
-
-
-# 训练模型
-lr_model.fit(X_encoded, y)
-
-# 预测函数
+# 预测函数：将用户选择的字符串标签转换为模型训练时使用的数值
 def predict_Vital_status(age, race, sex, primary_site, histologic_type, grade,
                          t_stage, n_stage, surgery, radiation, chemotherapy,
                          bone_metastasis, brain_metastasis, lung_metastasis):
